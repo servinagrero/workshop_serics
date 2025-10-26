@@ -1,0 +1,485 @@
+---
+title: "Practical Activities on PUFs and TRNGs"
+author: "Sergio Vinagrero"
+institute: "TIMA Laboratory"
+date: 2025-10-29
+from: markdown+emoji
+format:
+  revealjs:
+    toc: false
+    toc-depth: 2
+    slide-number: true
+    self-contained: true
+    preview-links: auto
+    logo: images/logo_tima.png
+    progress: true
+    smaller: true
+    footer: 'SERICS Autumn School on Hardware Security'
+    # css: styles.css
+    theme: [default, custom.scss]
+    center-title-slide: true
+    code-overflow: wrap
+    auto-stretch: false
+knitr:
+  opts_chunk:
+    # dev: "cairo_pdf"
+    dev: "ragg_png"
+
+execute:
+  echo: false
+  warning: false
+  cache: true
+  # freeze: auto
+  freeze: false
+
+---
+
+```{r}
+#| include: false
+library(tidyverse)
+library(latex2exp)
+```
+
+## Workshop Goals
+
+Use SRAM cells as sources of entropy
+
+Extract startup values and study their behaviour
+
+Use these values to create a PUF and a TRNG
+
+<br>
+
+:clipboard: Microcontrollers + Tools provided in the repository
+
+## Programme
+
+`14:00-15:45` `1h45`
+
+Confirm environment setup
+
+Save multiple readouts per device
+
+Analyze reliability per bit
+
+`15:45-16:15` `0h30`
+
+Coffe-break :coffee:
+
+`16:15-18:00` `1h45`
+
+Select reliable bits for a PUF key
+
+Compute PUF metrics
+
+Extract unstable bits for a TRNG
+
+Perform TRNG test suite
+
+Wrap up
+
+## SRAM as Entropy Source
+
+
+:::{.columns}
+
+:::{.column width=50%}
+
+Each SRAM cell is made of 2 cross-coupled inverters.
+
+Due to process variability, the inverters have different strength.
+
+On power-up, each cell randomly settles to 0 or 1
+
+**It's this random distribution of values that we are going to study and exploit**
+
+:::
+
+:::{.column width=50%}
+```{r}
+#| out-width: 90%
+knitr::include_graphics("./images/SRAM_cell.png")
+```
+:::
+
+:::
+
+## Device Under Test
+
+:::{.columns}
+:::{.column width=70%}
+
+During this workshop, we will be using the STM32L152RC microcontroller.
+
+<br>
+
+256 Kbytes of flash memory
+
+*32 Kbytes of RAM = 262144 bits**
+
+8 Kbytes of data EEPROM
+
+Can be controlled easily through ST-LINK/V2 debugger/programmer
+
+:::
+:::{.column width=30%}
+```{r}
+#| out-width: 60%
+knitr::include_graphics("images/stm32discovery.jpg")    
+```
+STM32 Discovery
+:::
+:::
+
+# Physical Unclonable Function
+
+## PUF Metrics
+
+:::{.columns}
+
+:::{.column width=50%}
+
+<span style="color:orange;">Uniformity(d)</span> $\small = \frac{1}{L} \sum_{l=1}^L R_{d,i}$
+
+<br>
+
+<span style="color:Red;">Bit-aliasing(c)</span> $\small = \frac{1}{D} \sum_{d=1}^D R_{d,c}$
+
+<br>
+
+<span style="color:blue;">Reliability</span> $\small = 1 - \frac{1}{S}\sum_{s=1}^S \tfrac{HD(R_{d,ref}, R_{d,s})}{L}$
+
+<br>
+
+<span style="color:green;">Uniqueness</span> $\small = \frac{2}{D(D-1)}\sum_{i\neq j} \tfrac{HD(R_i, R_j)}{L}$
+
+:::
+
+:::{.column width=40%}
+```{r}
+#| fig-align: center
+#| out-width: "95%"
+knitr::include_graphics("./images/Explanation_Caculation_Metrics.png")
+```
+:::
+
+:::
+
+The Hamming Distance between two vectors of equal length is the number of positions at which the corresponding values are different.
+
+## Reliability per bit
+
+:::{.columns}
+
+:::{.column width=60%}
+Measure how reliable each bit is across multiple measurements
+
+$$
+Reliability = 1 - \frac{1}{S}\sum_{s=1}^S XOR(R_{i,ref}, R_{l,s})
+$$
+
+Where $S$ is the number of readouts, $R_{l,ref}$ is the $l$-th reference bit and $R_{l,s}$ is the $l$-th bit from readout $s$.
+
+<br>
+
+This level of granularity allows us to select bits valid for PUF or TRNG
+
+:::
+
+:::{.column width=40%}
+```{r}
+#| fig-align: center
+#| fig-dpi: 300
+#| fig-width: 5
+#| fig-height: 4
+#| out-width: 100%
+
+probs <- (1:11)^2
+weights <- probs^2 / sum(probs^2)
+bins <- sample(seq(0,1, 0.1), 10000, replace=TRUE, prob=weights)
+
+ggplot(data.frame(rel=bins), aes(rel)) +
+    geom_histogram(binwidth = 0.1, fill="#0077b6", color="white") +
+    scale_x_continuous(breaks=seq(0, 1, 0.1), limits=c(0, 1.1)) +
+    labs(x="Reliability", y = "Density") +
+    theme_minimal(base_size=16, base_family="Geist") +
+    theme(
+        plot.margin=margin(.25, .25, .25, .25, 'cm'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()
+    )
+```
+
+You will probably obtain a Reliability per bit distribution similar to this one
+
+:::
+
+:::
+
+
+# True Random Number Generator
+
+## SRAM as TRNG
+
+- Power-cypcle the MCU repeatedly
+- Select the most unreliable bits
+- Aggregate bitstream -> Randomness candidate
+
+## TRNG Evaluation
+
+:::{.columns}
+
+:::{.column width=60%}
+
+There are plenty of statistical tests for randomness
+
+- Dieharder, **NIST SP 800-22**, NIST SP 800-90B, PractRand, TestU01, AIS, ...
+
+Most statistical tests provide a p-value that can be used to determine if the sequence passes the test
+
+<br>
+
+**It's important to state that even if all test pass, it's not a definitive proof**
+
+:::
+
+:::{.column width=35%}
+
+NIST SP 800-22 test suite
+
+::: {style="font-size: 60%;"}
+1. The Frequency (Monobit) Test
+1. Frequency Test within a Block
+1. The Runs Test
+1. Tests for the Longest-Run-of-Ones in a Block
+1. The Binary Matrix Rank Test
+1. The Discrete Fourier Transform (Spectral) Test
+1. The Non-overlapping Template Matching Test
+1. The Overlapping Template Matching Test
+1. Maurer's "Universal Statistical" Test
+1. The Linear Complexity Test
+1. The Serial Test
+1. The Approximate Entropy Test
+1. The Cumulative Sums (Cusums) Test
+1. The Random Excursions Test
+1. The Random Excursions Variant Test
+:::
+
+:::
+
+:::
+
+
+## Shannon Entropy
+
+:::{.columns}
+
+:::{.column width=60%}
+
+Entropy measures the expected amount of information needed to describe the state of the variable. In this context, is the number of bits needed to encode a sequence of bits.
+
+$$H(x) = -\sum_{x\in X} p(x) \log(x)$$
+
+:::
+
+:::{.column width=40%}
+
+```{r}
+#| fig-align: center
+#| fig-dpi: 300
+#| fig-width: 5
+#| fig-height: 3
+#| out-width: 100%
+
+H <- Vectorize(function(p) {
+    ifelse(p == 0.0 || p == 1.0, 0.0, -(p*log2(p) + (1-p)*log2(1-p)))
+})
+
+
+ggplot(data.frame(x=seq(0, 1, 0.01)), aes(x)) +
+    geom_function(fun = H) +
+    labs(x="P[X=1]", y = "H(X)") +
+    geom_vline(xintercept = 0.5, linetype = "dashed", color="red") +
+    theme_minimal(base_size=16, base_family="Geist") +
+    theme(
+        plot.margin=margin(.25, .25, .25, .25, 'cm'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()
+    )
+```
+:::
+:::
+
+For binary variables $X\in \{0, 1\}$, where $p = \mathbb{P}[X=1]$
+
+$$H(p) = -\left[p\log_2(p) + (1-p)\log_2(1-p)\right]$$
+
+:::{.aside}
+By convention $1 \log 1 = 0 \log 0 = 0$
+:::
+
+## Entropy vs Reliability
+
+:::{.columns}
+
+:::{.column width=60%}
+Reliability and Entropy share an inverse relationship:
+
+- Responses that are very reliable are usually biased
+- Conversely, unbiased responses tend to be unreliable
+
+**Study the relationship between Entropy and Reliability**
+
+:::
+
+:::{.column width=40%}
+
+```{r}
+#| echo: false
+#| warning: false
+#| fig-align: center
+#| fig-dpi: 300
+#| fig-width: 6
+#| fig-height: 6
+#| out-width: 95%
+#| fig-cap: We can classify responses based on their Entropy and Reliability
+
+tribble(
+  ~Reliability, ~Entropy, ~label,
+  0.15, 0.10, "PRNG",
+  0.15, 0.90, "TRNG",
+  0.85, 0.90, "PUF",
+  0.85, 0.10, "DET",
+) |>
+  ggplot(aes(x = Reliability, y = Entropy)) +
+  geom_text(aes(label = label), color="#0077b6", size = 8, family = "Geist") +
+  coord_cartesian(expand = FALSE, xlim = c(0, 1), ylim = c(0, 1), clip = "off") +
+  geom_vline(xintercept = 0.5, linetype = "dashed") +
+  geom_hline(yintercept = 0.5, linetype = "dashed") +
+  theme_minimal(base_size=16, base_family="Geist") +
+  theme(
+      plot.margin=margin(.5, .5, .5, .5, 'cm'),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_rect(colour = "black", fill=NA, linewidth=0.5)
+  )
+```
+
+:::
+
+:::
+
+## Workflow Summary
+
+- Power cycle the device and obtain SRAM startup data (10 readouts minimum)
+
+- Upload the data to the repository for other groups
+
+- Study the data and compute the metrics
+
+- Analyze Reliability per bit
+
+:::{.columns}
+
+:::{.column width=50%}
+
+**For the PUF**
+
+- Select reliable bits for a PUF key
+
+- Build PUF key
+
+:::
+
+:::{.column width=50%}
+
+**For the TRNG**
+
+- Extract unstable bits for a TRNG
+
+- Perform Randomness test suite
+
+
+:::
+
+:::
+
+
+## Practical Notes
+
+The repository contains the following resources: 
+
+```text
+├── data                       # Directory to store readouts
+├── docs                       # Presentation resources
+├── 00-install_st_openocd.sh   # Script to install openocd
+├── 01-collect_readouts.sh     # Script to mass erase and obtain a readout
+├── 02-get_nist.sh             # Script to download the NIST suite
+├── openocd_stm32.py           # Python wrapper around openocd 
+├── stm31l152re.template.cfg   # Template configuration for openocd
+└── README.md
+```
+
+<br>
+
+You can take a look at the `README.md` file for more instructions on how to install the necesary tools and how to use them.
+
+## Setting up the environment
+
+There are a series of script that download the necesary tools.
+
+```bash
+git clone https://github.com/servinagrero/workshop_turin.git
+cd workshop_turin
+```
+
+<br>
+
+You can take a look and modify the scripts `00-install_st_openocd.sh` and `02-get_nist.sh` to download and build the `openocd` and NIST test suite.
+
+```bash
+bash 00-install_st_openocd.sh # To install openocd and configurations
+bash 02-get_nist.sh           # To download and compile the NIST suite
+```
+
+## Obtaining readouts
+
+Take a look at the `01-collect_readouts.sh` script to see how to use the `openocd_stm32.py` wrapper
+
+<br>
+
+To mass erase the flash (Should be done at least once)
+```bash
+python3 openocd_stm32.py --openocd-scripts "/path/to/openocd/tcl" \
+    --interface "interface/stlink.cfg" --target="board/stm32ldiscovery.cfg" \
+    flash --erase
+```
+
+<br>
+
+To obtain a single readout. Make sure that the `--target` points to the correct configuration depending on the device used.
+The number of bytes to read is passed to `--size`. For the discovery boards it's value should be 32kB.
+
+```bash
+python3 openocd_stm32.py --openocd-scripts "/path/to/openocd/tcl" \
+    --interface "interface/stlink.cfg" --target="board/stm32ldiscovery.cfg" \
+    read --address 0x20000000 --size 0x8000 --dir "${READOUTS_DIR}"
+```
+
+## Running NIST test suite
+
+Take a look at the `02-get_nist.sh` script to see how to run the test suite.
+**This test suite is very finicky**
+
+The parameter to `assess` is the length of each bitstream
+
+You should run minimum of 10 bitstreams with 1000 bits each
+
+```bash
+# Here you pray to the Gods that the test doesn't segfault
+./assess 10000 < config.txt
+
+# The final results are written to a text file
+cat experiments/AlgorithmTesting/finalAnalysisReport.txt
+```
+

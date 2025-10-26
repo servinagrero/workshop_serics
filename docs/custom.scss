@@ -1,0 +1,139 @@
+/*-- scss:defaults --*/
+$h2-font-size: 1.5rem !default;
+// $headings-font-weight: 500 !default;
+// $headings-font-weight: 700 !default;
+// $headings-line-height: 1.1 !default;
+// $headings-font-family: "Amiri", serif !default;
+
+$font-family-sans-serif: "Inter Display", sans-serif !default;
+$font-family-monospace: "JetBrains Mono", monospace !default;
+
+$primary: #0077b6 !default;
+/* $primary: #578e7e !default; */
+$presentation-heading-color: $primary;
+// $presentation-font-size-root: 30px;
+$presentation-font-smaller: 0.65;
+$presentation-slide-text-align: left;
+$presentation-title-slide-text-align: left;
+
+$presentation-heading-font: "Inter Display Bold", sans-serif !default;
+
+$link-color: $primary !default;
+
+/*-- scss:rules --*/
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: $primary;
+    font-family: $font-family-monospace;
+    font-weight: bold;
+    border: none;
+}
+
+h2 {
+    padding-bottom: 0.5em;
+}
+
+h1:not(.title) {
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid white;
+}
+
+.reveal hr {
+    margin: 1rem;
+    border: 1px solid;
+}
+
+.reveal .quarto-title-block .date {
+    font-size: 1rem;
+    color: grey;
+}
+
+.reveal .quarto-title-block .quarto-title-authors {
+    display: flex;
+    justify-content: start;
+    padding-top: 4rem;
+
+    p.quarto-title-affiliation {
+        font-style: italic;
+        font-size: 60%;
+        padding: 1em 0em 1em 0em;
+    }
+
+    .quarto-title-author-name {        
+        font-size: 2.25rem;
+    }
+
+    p.author::before {
+        content: "";
+        display: block;
+        border: none;
+        background-color: $body-color;
+        color: $body-color;
+        height: 1px;
+        margin-bottom: 1em;
+    }
+
+    & .quarto-title-author {
+        padding: 0em;
+    }
+}
+
+.reveal .panel-tabset [role="tab"] {
+    font-size: 0.8em;
+}
+
+/* .reveal .quarto-title-block .quarto-title-authors .quarto-title-author { */
+/* padding: 0; */
+/* } */
+
+.reveal .slide-background.level1 {
+    background-color: $primary !important; /* Slide background color */
+}
+
+.reveal .slides section.stack section.title-slide {
+    color: white; /* h1 text color */
+    text-align: left; /* Optional: center the text */
+}
+
+.reveal .slides section.level1 {
+    color: white; /* Set text color for the corresponding slide */
+}
+
+/* .reveal .slides section[data-level="1"] h1 { */
+/* background-color: #1c1c1c !important; */
+/* } */
+
+/* .reveal #level1 > h1 { */
+/* color: #0077b6 !important; */
+/* } */
+
+// .reveal #title-slide {
+//     text-align: left;
+// }
+
+/* code.sourceCode div.cell-output-stdout { */
+.reveal code.sourceCode {
+    font-size: 1.15em !important;
+}
+
+div.cell-output-stdout {
+    font-size: 1.5em;
+}
+
+.reveal .slide-number {
+    /* font-family: $presentation-heading-font; */
+    font-family: $font-family-monospace;
+}
+
+.center-x {
+    text-align: center;
+}
+
+.reveal .footer {
+    color: #707f9e;
+    font-size: 3px;
+}
