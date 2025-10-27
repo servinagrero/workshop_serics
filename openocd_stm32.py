@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
     epilog_all = """
 Indicate the directory where openocd will look for the TCL scripts using the `--openocd-path`. Additionally, a custom openocd binary can be specified using `--openocd-path`.
-$ %(prog)s --openocd-path /path/to/custom/openocd --openocd-scripts /opt/OpenOCD/tcl
+$ %(prog)s --openocd-path /path/to/custom/openocd --openocd-scripts /path/to/openocd/tcl
 
 The interface and target are specified using the `--interface` and `--target` flags respectively
 $ %(prog)s --interface="interface/stlink.cfg" --target="board/st_nucleo_l1.cfg"

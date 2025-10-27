@@ -10,8 +10,8 @@ This repository contains the following files:
 ├── 00-install_st_openocd.sh   # Script to install openocd
 ├── 01-collect_readouts.sh     # Script to mass erase and obtain a readout
 ├── 02-get_nist.sh             # Script to download the NIST suite
-├── openocd_stm32.py           # Python wrapper around openocd 
-├── stm31l152re.template.cfg   # Template configuration for openocd
+├── openocd_stm32.py           # Python wrapper around openocd
+├── stm32l152.template.cfg     # Template configuration for openocd
 └── README.md
 ```
 
@@ -24,18 +24,24 @@ The script `00-install_st_openocd.sh` will download the ST version of openocd al
 You can modify the script to download the repository to another directory, but you will need to pass the absolute path of the `tcl` directory to the wrapper
 
 To mass erase the flash (Should be done at least once)
+
 ```bash
-python3 openocd_stm32.py --openocd-scripts "/path/to/openocd/tcl" \
+python3 openocd_stm32.py \
+    --openocd-scripts "OpenOCD/tcl" \
     --interface "interface/stlink.cfg" --target="board/stm32ldiscovery.cfg" \
     flash --erase
 ```
 
 To obtain a readout. Size should be in bytes. 32kB for these boards
+
 ```bash
-python3 openocd_stm32.py --openocd-scripts "/path/to/openocd/tcl" \
+python3 openocd_stm32.py \
+    --openocd-scripts "OpenOCD/tcl" \
     --interface "interface/stlink.cfg" --target="board/stm32ldiscovery.cfg" \
     read --address 0x20000000 --size 0x8000 --dir "${READOUTS_DIR}"
 ```
+
+The script `01-collect_readouts.sh` will perform both operations automatically. Just make sure to modify the `READOUTS_DIR` variable to point to a subdirectory in the `data` directory to store the readouts.
 
 ## Running NIST test suite
 

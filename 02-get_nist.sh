@@ -4,8 +4,7 @@
 
 set -eu
 
-git clone https://github.com/terrillmoore/NIST-Statistical-Test-Suite/tree/master
-
+git clone https://github.com/terrillmoore/NIST-Statistical-Test-Suite.git
 cd NIST-Statistical-Test-Suite || exit 1
 
 ./setup.sh
@@ -18,7 +17,7 @@ make
 # Configuration
 # 10 bitstreams
 # 0 for ASCII and 1 for binary file
-cat > config.txt << EOF
+cat << EOF > config.txt
 0
 /path/to/bitstream.txt
 1

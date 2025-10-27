@@ -1,7 +1,11 @@
 ---
 title: "Practical Activities on PUFs and TRNGs"
-author: "Sergio Vinagrero"
-institute: "TIMA Laboratory"
+author:
+    - name: "Sergio Vinagrero"
+      email: vinagres@univ-grenoble-alpes.fr
+      affiliations:
+        - name: TIMA Laboratory
+email: vinagres@univ-grenoble-alpes.fr
 date: 2025-10-29
 from: markdown+emoji
 format:
@@ -20,10 +24,13 @@ format:
     center-title-slide: true
     code-overflow: wrap
     auto-stretch: false
+    highlight-style: arrow
 knitr:
   opts_chunk:
     # dev: "cairo_pdf"
     dev: "ragg_png"
+
+jupyter: python3
 
 execute:
   echo: false
@@ -52,9 +59,33 @@ Use these values to create a PUF and a TRNG
 
 :clipboard: Microcontrollers + Tools provided in the repository
 
+## Who am I?
+
+:::{.columns}
+
+:::{.column width=60%}
+**PhD in Grenoble, France**
+
+Methodologies for the Design, the Modeling, and the Quality Assessment of
+Physical Unclonable Functions (PUFs)
+
+<br>
+
+**PostDoc at NEUROPULS project in Lyon and Grenoble, France**
+
+Development of authentication protocols restistant to Machine Learning attacks based
+on Photonic-based Physical Unclonable Functions
+:::
+
+:::{.column width=40%}
+:::
+
+:::
+
+
 ## Programme
 
-`14:00-15:45` `1h45`
+**14:00-15:45**
 
 Confirm environment setup
 
@@ -62,17 +93,17 @@ Save multiple readouts per device
 
 Analyze reliability per bit
 
-`15:45-16:15` `0h30`
+<br>
+
+**15:45-16:15**
 
 Coffe-break :coffee:
 
-`16:15-18:00` `1h45`
+<br>
 
-Select reliable bits for a PUF key
+**16:15-18:00**
 
 Compute PUF metrics
-
-Extract unstable bits for a TRNG
 
 Perform TRNG test suite
 
@@ -80,14 +111,13 @@ Wrap up
 
 ## SRAM as Entropy Source
 
-
 :::{.columns}
 
 :::{.column width=50%}
 
-Each SRAM cell is made of 2 cross-coupled inverters.
+Each SRAM cell is made of 2 cross-coupled inverters
 
-Due to process variability, the inverters have different strength.
+Due to process variability, the inverters have different strength
 
 On power-up, each cell randomly settles to 0 or 1
 
@@ -109,13 +139,13 @@ knitr::include_graphics("./images/SRAM_cell.png")
 :::{.columns}
 :::{.column width=70%}
 
-During this workshop, we will be using the STM32L152RC microcontroller.
+During this workshop, we will be using the STM32L152RC microcontroller
 
 <br>
 
 256 Kbytes of flash memory
 
-*32 Kbytes of RAM = 262144 bits**
+**32 Kbytes of RAM = 262144 bits**
 
 8 Kbytes of data EEPROM
 
@@ -125,13 +155,13 @@ Can be controlled easily through ST-LINK/V2 debugger/programmer
 :::{.column width=30%}
 ```{r}
 #| out-width: 60%
-knitr::include_graphics("images/stm32discovery.jpg")    
+knitr::include_graphics("images/stm32discovery.jpg")
 ```
 STM32 Discovery
 :::
 :::
 
-# Physical Unclonable Function
+# SRAM as PUF
 
 ## PUF Metrics
 
@@ -180,29 +210,26 @@ $$
 
 Where $S$ is the number of readouts, $R_{l,ref}$ is the $l$-th reference bit and $R_{l,s}$ is the $l$-th bit from readout $s$.
 
-<br>
-
-This level of granularity allows us to select bits valid for PUF or TRNG
-
 :::
 
 :::{.column width=40%}
 ```{r}
 #| fig-align: center
 #| fig-dpi: 300
-#| fig-width: 5
+#| fig-width: 6
 #| fig-height: 4
 #| out-width: 100%
+#| fig-cap: You will probably obtain a Reliability per bit distribution similar to this one
 
-probs <- (1:11)^2
-weights <- probs^2 / sum(probs^2)
+probs <- 0.65^(11:1)
+weights <- probs / sum(probs)
 bins <- sample(seq(0,1, 0.1), 10000, replace=TRUE, prob=weights)
 
 ggplot(data.frame(rel=bins), aes(rel)) +
     geom_histogram(binwidth = 0.1, fill="#0077b6", color="white") +
     scale_x_continuous(breaks=seq(0, 1, 0.1), limits=c(0, 1.1)) +
     labs(x="Reliability", y = "Density") +
-    theme_minimal(base_size=16, base_family="Geist") +
+    theme_minimal(base_size=16, base_family="Inter") +
     theme(
         plot.margin=margin(.25, .25, .25, .25, 'cm'),
         panel.grid.major = element_blank(),
@@ -210,20 +237,117 @@ ggplot(data.frame(rel=bins), aes(rel)) +
     )
 ```
 
-You will probably obtain a Reliability per bit distribution similar to this one
-
 :::
 
 :::
 
+<br>
 
-# True Random Number Generator
+**This level of granularity allows us to select bits valid for PUF or TRNG**
+
+
+## Example Metrics Setup
+
+For this example, the CRPs are generated randomnly.
+
+You will need to load the readouts you obtained into a similar format.
+
+```python
+import numpy as np
+from itertools import combinations
+
+# 8 devices with 32 bits each and 10 samples plus the reference response
+C, D, S = 32, 8, 11
+
+Devices = np.arange(D)     # The device ids
+Challenges = np.arange(C)  # The challenges
+Samples = np.arange(1, S)  # The samples. The Sample 0 is the reference
+
+# We are going to generate random CRPS
+# We are interested in the reference sample
+# The rest of the samples are generated below
+crps = np.random.randint(0, 2, (C, D, S), dtype=np.int8)
+ref = crps[:,:,0]
+
+err_rate = 0.2 # We set some bit error-rate
+for s in Samples:
+    crps[:,:, s] = np.bitwise_xor(ref, np.random.rand(C, D) <= err_rate)
+```
+
+## Example Metrics Computation
+
+```python
+# Uniformity is the mean response per device
+uniformity = np.mean(ref, axis=0)
+
+# Uniformity is the mean response per challenge
+bit_aliasing = np.mean(ref, axis=1)
+
+# The number of device pairs, without repetition
+num_pairs = D*(D-1) // 2
+uniqueness = np.zeros(num_pairs, dtype=float)
+
+pairs = np.array(list(combinations(Devices, 2)))
+for p in np.nditer(pairs):
+    f, s = pairs[p]
+    uniqueness[p] = np.bitwise_xor(ref[:, f], ref[:,s]).mean()
+
+matches = [np.bitwise_and(ref, crps[:,:,s]) for s in Samples]
+reliability = np.dstack(matches).mean(axis=2)
+
+# Compute the reliability per bit and check against the expected distribution
+reliability_per_bit = reliability.mean(axis=1)
+```
+
+# SRAM as TRNG
 
 ## SRAM as TRNG
 
-- Power-cypcle the MCU repeatedly
-- Select the most unreliable bits
-- Aggregate bitstream -> Randomness candidate
+:::{.columns}
+
+:::{.column width=60%}
+
+By analyzing the readouts, we have seen the distribution of reliability per bit.
+
+We (*should*) have seen that the distribution of reliability per bit is assymetric, and there are a few bits that are very unreliable.
+
+Instead of ignoring these bits, we will aggregate them into a single bitstream that we will treat as the output of a True Random Number Generator (TRNG)
+:::
+
+:::{.column width=40%}
+
+```{r}
+#| fig-align: center
+#| fig-dpi: 300
+#| fig-width: 6
+#| fig-height: 4
+#| out-width: 100%
+#| fig-cap: We are interested in unreliable bits. The threshold used here is arbitrary
+
+probs <- 0.65^(11:1)
+weights <- probs / sum(probs)
+bins <- sample(seq(0,1, 0.1), 10000, replace=TRUE, prob=weights)
+
+data.frame(
+    rel=bins,
+    unrel=bins <= 0.5
+    ) |>
+ggplot(aes(rel)) +
+    geom_histogram(aes(fill=unrel), binwidth = 0.1, color="white") +
+    scale_fill_manual(values=c("#0077b62a", "#0077b6")) +
+    scale_x_continuous(breaks=seq(0, 1, 0.1), limits=c(0, 1.1)) +
+    labs(x="Reliability", y = "Density") +
+    theme_minimal(base_size=16, base_family="Inter") +
+    guides(fill="none") +
+    theme(
+        plot.margin=margin(.25, .25, .25, .25, 'cm'),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()
+    )
+```
+:::
+
+:::
 
 ## TRNG Evaluation
 
@@ -276,7 +400,7 @@ NIST SP 800-22 test suite
 
 :::{.column width=60%}
 
-Entropy measures the expected amount of information needed to describe the state of the variable. In this context, is the number of bits needed to encode a sequence of bits.
+Entropy measures the expected amount of information needed to describe the state of the variable. In this context, is the number of bits needed to encode a bitstream.
 
 $$H(x) = -\sum_{x\in X} p(x) \log(x)$$
 
@@ -287,7 +411,7 @@ $$H(x) = -\sum_{x\in X} p(x) \log(x)$$
 ```{r}
 #| fig-align: center
 #| fig-dpi: 300
-#| fig-width: 5
+#| fig-width: 6
 #| fig-height: 3
 #| out-width: 100%
 
@@ -299,8 +423,8 @@ H <- Vectorize(function(p) {
 ggplot(data.frame(x=seq(0, 1, 0.01)), aes(x)) +
     geom_function(fun = H) +
     labs(x="P[X=1]", y = "H(X)") +
-    geom_vline(xintercept = 0.5, linetype = "dashed", color="red") +
-    theme_minimal(base_size=16, base_family="Geist") +
+    geom_vline(xintercept = 0.5, linetype = "dashed", color="#0077b6", linewidth=1) +
+    theme_minimal(base_size=16, base_family="Inter") +
     theme(
         plot.margin=margin(.25, .25, .25, .25, 'cm'),
         panel.grid.major = element_blank(),
@@ -317,6 +441,26 @@ $$H(p) = -\left[p\log_2(p) + (1-p)\log_2(1-p)\right]$$
 :::{.aside}
 By convention $1 \log 1 = 0 \log 0 = 0$
 :::
+
+## Example on Shannon Entropy
+
+While there are many estimators of entropy, we stick to using the "Naive" Shannon Entropy estimator.
+
+The entropy of the bitstream should be very close to 1.
+
+```python
+import numpy as np
+
+bitstream = np.array(np.random.random(10**7) >= 0.5, dtype=np.int8)
+p_one = bits.mean()
+
+def H(p):
+    if p == 0.0 or p == 1.0:
+        return 0.0
+    return -(p*np.log2(p) + (1-p)*np.log2(1-p))
+
+entropy = H(p_one)
+```
 
 ## Entropy vs Reliability
 
@@ -352,11 +496,11 @@ tribble(
   0.85, 0.10, "DET",
 ) |>
   ggplot(aes(x = Reliability, y = Entropy)) +
-  geom_text(aes(label = label), color="#0077b6", size = 8, family = "Geist") +
+  geom_text(aes(label = label), color="#0077b6", size = 8, family = "Inter", fontface = "bold") +
   coord_cartesian(expand = FALSE, xlim = c(0, 1), ylim = c(0, 1), clip = "off") +
   geom_vline(xintercept = 0.5, linetype = "dashed") +
   geom_hline(yintercept = 0.5, linetype = "dashed") +
-  theme_minimal(base_size=16, base_family="Geist") +
+  theme_minimal(base_size=16, base_family="Inter") +
   theme(
       plot.margin=margin(.5, .5, .5, .5, 'cm'),
       panel.grid.major = element_blank(),
@@ -369,15 +513,15 @@ tribble(
 
 :::
 
-## Workflow Summary
+## Workshop Summary
 
-- Power cycle the device and obtain SRAM startup data (10 readouts minimum)
+Power cycle the device and obtain SRAM startup data (10 readouts minimum)
 
-- Upload the data to the repository for other groups
+Upload the data to the repository for other groups
 
-- Study the data and compute the metrics
+Study the data and compute the metrics
 
-- Analyze Reliability per bit
+Analyze Reliability per bit
 
 :::{.columns}
 
@@ -385,9 +529,9 @@ tribble(
 
 **For the PUF**
 
-- Select reliable bits for a PUF key
+Select reliable bits for a PUF key
 
-- Build PUF key
+Build PUF key
 
 :::
 
@@ -395,9 +539,9 @@ tribble(
 
 **For the TRNG**
 
-- Extract unstable bits for a TRNG
+Extract unstable bits for a TRNG
 
-- Perform Randomness test suite
+Perform Randomness test suite
 
 
 :::
@@ -405,9 +549,11 @@ tribble(
 :::
 
 
-## Practical Notes
+# Practical Notes
 
-The repository contains the following resources: 
+## Tools in the repository
+
+The repository contains the following resources:
 
 ```text
 ├── data                       # Directory to store readouts
@@ -415,7 +561,7 @@ The repository contains the following resources:
 ├── 00-install_st_openocd.sh   # Script to install openocd
 ├── 01-collect_readouts.sh     # Script to mass erase and obtain a readout
 ├── 02-get_nist.sh             # Script to download the NIST suite
-├── openocd_stm32.py           # Python wrapper around openocd 
+├── openocd_stm32.py           # Python wrapper around openocd
 ├── stm31l152re.template.cfg   # Template configuration for openocd
 └── README.md
 ```
@@ -433,8 +579,6 @@ git clone https://github.com/servinagrero/workshop_turin.git
 cd workshop_turin
 ```
 
-<br>
-
 You can take a look and modify the scripts `00-install_st_openocd.sh` and `02-get_nist.sh` to download and build the `openocd` and NIST test suite.
 
 ```bash
@@ -442,11 +586,11 @@ bash 00-install_st_openocd.sh # To install openocd and configurations
 bash 02-get_nist.sh           # To download and compile the NIST suite
 ```
 
+The `openocd` tool should also be available from the repositories of your distribution.
+
 ## Obtaining readouts
 
 Take a look at the `01-collect_readouts.sh` script to see how to use the `openocd_stm32.py` wrapper
-
-<br>
 
 To mass erase the flash (Should be done at least once)
 ```bash
@@ -455,10 +599,7 @@ python3 openocd_stm32.py --openocd-scripts "/path/to/openocd/tcl" \
     flash --erase
 ```
 
-<br>
-
-To obtain a single readout. Make sure that the `--target` points to the correct configuration depending on the device used.
-The number of bytes to read is passed to `--size`. For the discovery boards it's value should be 32kB.
+To obtain a single readout make sure that the `--target` points to the correct configuration depending on the device used and that the correct memory size is passed to `--size`. For the discovery boards it should be 32kB (0x8000).
 
 ```bash
 python3 openocd_stm32.py --openocd-scripts "/path/to/openocd/tcl" \
@@ -466,20 +607,20 @@ python3 openocd_stm32.py --openocd-scripts "/path/to/openocd/tcl" \
     read --address 0x20000000 --size 0x8000 --dir "${READOUTS_DIR}"
 ```
 
+The script `01-collect_readouts.sh` will perform both operations automatically. Just make sure to modify the `READOUTS_DIR` variable to point to a subdirectory in the `data` directory to store the readouts.
+
 ## Running NIST test suite
 
 Take a look at the `02-get_nist.sh` script to see how to run the test suite.
-**This test suite is very finicky**
 
-The parameter to `assess` is the length of each bitstream
+**This test suite is known to be very finicky**
 
-You should run minimum of 10 bitstreams with 1000 bits each
+The parameter to `assess` is the length of each bitstream. You should run  a minimum of 10 bitstreams with 1000 bits each, but it's better to run it on more data.
 
 ```bash
-# Here you pray to the Gods that the test doesn't segfault
+# If you don't have enough data, the program will segfault
 ./assess 10000 < config.txt
 
 # The final results are written to a text file
 cat experiments/AlgorithmTesting/finalAnalysisReport.txt
 ```
-
