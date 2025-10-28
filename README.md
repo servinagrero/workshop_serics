@@ -43,6 +43,21 @@ python3 openocd_stm32.py \
 
 The script `01-collect_readouts.sh` will perform both operations automatically. Just make sure to modify the `READOUTS_DIR` variable to point to a subdirectory in the `data` directory to store the readouts.
 
+## Readouts Dataset
+
+A readout dataset is also provided to perform the workshop.
+
+The dataset is comporised of 10 readouts plus the reference sample of 30 devices, each with 80kB.
+
+The dataset is located in `data/readouts.zip`. You can unzip the file and 13 different files will be extracted. Each file is a bytestream of 30 * 80 * 1024 = 2457600 unsigned bytes.
+
+```
+$ unzip data/readouts.zip -d data
+```
+
+To obtain the readouts of the 30 devices, read each bytestream in chunks of 80 * 1024 = 81920 bytes. That is to each, each device can be read from bytes `[0,81920]`, `(81920,163840]`, `(163840,245760]`, ..., `(2375680,2457600]`
+
+
 ## Running NIST test suite
 
 The script `02-get_nist.sh` will download the C source code of the NIST SP 800-22 suite and build it from source.
